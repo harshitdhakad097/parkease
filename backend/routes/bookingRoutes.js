@@ -19,11 +19,41 @@ router.post("/bookings", async (req, res) => {
     // Extract data from request body
     const { locationId, slotNumber, locationName, pricePerHour } = req.body;
 
-    // Basic validation
+    // Basic validation - check all required fields exist
     if (!locationId || !slotNumber || !locationName || !pricePerHour) {
+      console.warn("Missing required fields in booking request:", { locationId, slotNumber, locationName, pricePerHour });
       return res.status(400).json({
         success: false,
-        message: "Missing required fields",
+        message: "Missing required fields: locationId, slotNumber, locationName, pricePerHour",
+      });
+    }
+
+    // Validate data types
+    if (typeof locationId !== "string" || locationId.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid locationId: must be a non-empty string",
+      });
+    }
+
+    if (typeof slotNumber !== "string" || slotNumber.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid slotNumber: must be a non-empty string",
+      });
+    }
+
+    if (typeof locationName !== "string" || locationName.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid locationName: must be a non-empty string",
+      });
+    }
+
+    if (typeof pricePerHour !== "number" || pricePerHour <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pricePerHour: must be a positive number",
       });
     }
 
@@ -32,10 +62,10 @@ router.post("/bookings", async (req, res) => {
 
     // Create booking object
     const newBooking = {
-      locationId,
-      slotNumber,
-      locationName,
-      pricePerHour,
+      locationId: locationId.trim(),
+      slotNumber: slotNumber.trim(),
+      locationName: locationName.trim(),
+      pricePerHour: pricePerHour,
       status: "confirmed",
       qrCode,
       createdAt: new Date(), // Timestamp
@@ -44,6 +74,8 @@ router.post("/bookings", async (req, res) => {
     // Save to Firestore
     const docRef = await db.collection("bookings").add(newBooking);
 
+    console.log("Booking created successfully:", { id: docRef.id, ...newBooking });
+
     // Return success response with booking ID
     res.status(201).json({
       success: true,
@@ -51,12 +83,18 @@ router.post("/bookings", async (req, res) => {
       data: newBooking,
     });
   } catch (error) {
-    console.error("Error creating booking:", error);
+    console.error("Error creating booking:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      requestBody: req.body,
+    });
 
-    // Error response
+    // Error response with detailed info in development
     res.status(500).json({
       success: false,
       message: "Failed to create booking",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });

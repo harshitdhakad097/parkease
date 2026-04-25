@@ -10,8 +10,15 @@ const bookingRoutes = require("./routes/bookingRoutes"); // Booking routes
 // Create Express app
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: ["http://localhost:3000", "http://localhost:5000", "http://127.0.0.1:3000"],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware setup
-app.use(cors()); // Allow requests from frontend (React)
+app.use(cors(corsOptions)); // Allow requests from frontend (React) with restrictions
 app.use(express.json()); // Parse JSON request body
 
 // Use routes

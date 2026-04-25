@@ -1,8 +1,10 @@
 // Import Firebase Admin SDK
 const admin = require("firebase-admin");
+const path = require("path");
 
-// Load service account key JSON file from backend folder
-const serviceAccount = require("./backend/serviceAccountKey.json");
+// Resolve service account key path dynamically (works from any directory)
+const keyPath = path.join(__dirname, "./backend/serviceAccountKey.json");
+const serviceAccount = require(keyPath);
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({

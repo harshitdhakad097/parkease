@@ -5,7 +5,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; // Used for routing
 
 // Import Navbar component (shown on all pages)
-import Navbar from "./components/navbar";
+import Navbar from "./components/Navbar";
 
 // Import all pages from pages folder
 import Home from "./pages/Home"; // Home page ("/")
