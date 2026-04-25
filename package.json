@@ -9,7 +9,14 @@
     "frontend": "cd frontend && npm start",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
-  "keywords": ["parking", "booking", "realtime"],
+  "keywords": [
+    "parking",
+    "booking",
+    "realtime"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "firebase-admin": "^13.8.0"
+  }
 }

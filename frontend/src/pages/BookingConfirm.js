@@ -4,12 +4,6 @@ import React, { useState } from "react";
 // Import navigation hook
 import { useNavigate } from "react-router-dom";
 
-// Import Firestore functions
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-
-// Import database instance
-import { db } from "../firebase";
-
 // BookingConfirm component
 function BookingConfirm() {
   // Hook for navigation
@@ -76,40 +70,45 @@ function BookingConfirm() {
     );
   }
 
-  // Function to generate random QR code string
-  const generateQRCode = () => {
-    return "QR_" + Math.random().toString(36).substring(2, 10);
-  };
-
   // Handle booking confirmation
   const handleConfirm = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Generate QR code string
-      const qrCode = generateQRCode();
-
-      // Save booking to Firestore
-      await addDoc(collection(db, "bookings"), {
-        locationId: locationId,
-        slotNumber: slotNumber,
-        locationName: locationName,
-        pricePerHour: pricePerHour,
-        status: "confirmed",
-        createdAt: serverTimestamp(), // Firebase timestamp
-        qrCode: qrCode,
+      // Send booking request to backend API
+      const response = await fetch("http://localhost:5000/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          locationId: locationId,
+          slotNumber: slotNumber,
+          locationName: locationName,
+          pricePerHour: pricePerHour,
+        }),
       });
 
-      // Save QR code to localStorage for next page
-      localStorage.setItem("qrCode", qrCode);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to create booking");
+      }
+
+      // Save QR code from API response
+      const qrCode = result.qrCode || result.data?.qrCode;
+      if (qrCode) {
+        localStorage.setItem("qrCode", qrCode);
+      }
+      
       localStorage.removeItem("booking"); // Clear booking data
 
       // Navigate to QR code page
       navigate("/qrcode");
     } catch (error) {
       console.error("Error saving booking:", error);
-      setError("Failed to confirm booking. Please try again.");
+      setError(error.message || "Failed to confirm booking. Please try again.");
     } finally {
       setLoading(false);
     }

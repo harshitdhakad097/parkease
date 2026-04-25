@@ -1,7 +1,7 @@
 // Import React and hooks
 import React, { useEffect, useState } from "react";
 
-// Import Firestore functions
+// Import Firestore functions (kept as fallback)
 import { collection, getDocs } from "firebase/firestore";
 
 // Import database instance
@@ -19,19 +19,33 @@ function MyBookings() {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        // Get all documents from "bookings" collection
-        const querySnapshot = await getDocs(collection(db, "bookings"));
+        // Fetch from backend API
+        const response = await fetch("http://localhost:5000/api/bookings");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch bookings from server");
+        }
 
-        // Convert Firestore docs to array
-        const data = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        // Save bookings to state
-        setBookings(data);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          setBookings(result.data);
+        } else {
+          throw new Error(result.message || "No data received");
+        }
       } catch (error) {
-        console.error("Error fetching bookings:", error);
+        // Fallback to Firestore if API fails
+        console.warn("API fetch failed, trying Firestore directly:", error);
+        try {
+          const querySnapshot = await getDocs(collection(db, "bookings"));
+          const data = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setBookings(data);
+        } catch (firebaseErr) {
+          console.error("Both API and Firestore failed:", firebaseErr);
+        }
       } finally {
         setLoading(false);
       }

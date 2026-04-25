@@ -9,6 +9,9 @@ function ParkingCard({ name, address, totalSlots, pricePerHour, locationId }) {
   // Hook to navigate programmatically
   const navigate = useNavigate();
 
+  // State for hover effect
+  const [isHovered, setIsHovered] = React.useState(false);
+
   // Function to handle button click
   const handleBooking = () => {
     // Navigate to slot selection page with locationId
@@ -16,55 +19,149 @@ function ParkingCard({ name, address, totalSlots, pricePerHour, locationId }) {
   };
 
   return (
-    // Card container
-    <div style={styles.card}>
+    // Card container with hover effect
+    <div 
+      style={{
+        ...styles.card,
+        ...(isHovered ? styles.cardHover : {})
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       
-      {/* Parking Name */}
+      {/* Parking Name - Premium Title */}
       <h2 style={styles.title}>{name}</h2>
 
-      {/* Address */}
-      <p style={styles.text}>{address}</p>
+      {/* Address with Pin Icon */}
+      <div style={styles.infoRow}>
+        <span style={styles.icon}>📍</span>
+        <p style={styles.text}>{address}</p>
+      </div>
 
       {/* Total Slots */}
-      <p style={styles.text}>Total Slots: {totalSlots}</p>
+      <div style={styles.infoRow}>
+        <span style={styles.icon}>🅿️</span>
+        <p style={styles.text}>{totalSlots} slots available</p>
+      </div>
 
-      {/* Price per hour */}
-      <p style={styles.text}>₹{pricePerHour} / hour</p>
+      {/* Price per hour with Clock Icon */}
+      <div style={styles.infoRow}>
+        <span style={styles.icon}>⏱️</span>
+        <p style={styles.priceText}>₹{pricePerHour} / hour</p>
+      </div>
 
-      {/* Book Now button */}
-      <button style={styles.button} onClick={handleBooking}>
-        Book Now
+      {/* Divider Line */}
+      <div style={styles.divider}></div>
+
+      {/* Book Now button - Full Width */}
+      <button 
+        style={{
+          ...styles.button,
+          ...(isHovered ? styles.buttonHover : {})
+        }}
+        onClick={handleBooking}
+      >
+        <span style={styles.buttonText}>Book Now</span>
+        <span style={styles.buttonArrow}>→</span>
       </button>
     </div>
   );
 }
 
-// Inline styles for the card
+// Premium inline styles for the card
 const styles = {
   card: {
-    border: "1px solid #ddd", // Light border
-    borderRadius: "10px", // Rounded corners
-    padding: "15px", // Inner spacing
-    margin: "10px", // Space between cards
-    width: "250px", // Fixed width
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)", // Soft shadow
-    backgroundColor: "#fff", // White background
+    backgroundColor: "#1A1F35", // Dark card background
+    border: "1px solid rgba(30, 144, 255, 0.2)", // Subtle blue border
+    borderRadius: "16px",
+    padding: "24px",
+    margin: "16px",
+    width: "320px",
+    minHeight: "280px",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 8px 32px rgba(30, 144, 255, 0.08)", // Glow effect
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    cursor: "pointer",
+    position: "relative",
+    overflow: "hidden",
+  },
+  cardHover: {
+    borderColor: "rgba(30, 144, 255, 0.5)",
+    boxShadow: "0 16px 48px rgba(30, 144, 255, 0.15)", // Enhanced glow on hover
+    transform: "translateY(-8px)", // Lift effect
+    backgroundColor: "#1F2540",
   },
   title: {
-    marginBottom: "10px",
+    marginBottom: "16px",
+    fontSize: "22px",
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: "0.3px",
+  },
+  infoRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "12px",
+    marginBottom: "12px",
+  },
+  icon: {
+    fontSize: "18px",
+    marginTop: "2px",
+    minWidth: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   text: {
-    margin: "5px 0",
-    color: "#555",
+    margin: 0,
+    color: "#B0B8C8",
+    fontSize: "14px",
+    fontWeight: "500",
+    lineHeight: "1.5",
+  },
+  priceText: {
+    margin: 0,
+    color: "#1E90FF",
+    fontSize: "16px",
+    fontWeight: "700",
+    lineHeight: "1.5",
+  },
+  divider: {
+    height: "1px",
+    backgroundColor: "rgba(30, 144, 255, 0.1)",
+    margin: "16px 0",
   },
   button: {
-    marginTop: "10px",
-    padding: "8px 12px",
-    backgroundColor: "#007bff", // Blue button
+    marginTop: "auto",
+    padding: "14px 20px",
+    backgroundColor: "#1E90FF",
     color: "#fff",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "10px",
     cursor: "pointer",
+    fontWeight: "700",
+    fontSize: "15px",
+    letterSpacing: "0.5px",
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    width: "100%",
+    boxShadow: "0 4px 15px rgba(30, 144, 255, 0.3)",
+  },
+  buttonHover: {
+    backgroundColor: "#0077CC",
+    boxShadow: "0 8px 25px rgba(30, 144, 255, 0.5)",
+    transform: "scale(1.02)",
+  },
+  buttonText: {
+    fontWeight: "700",
+  },
+  buttonArrow: {
+    fontSize: "18px",
+    fontWeight: "bold",
   },
 };
 

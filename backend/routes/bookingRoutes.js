@@ -12,6 +12,55 @@ const generateQRCode = () => {
   return "QR_" + Math.random().toString(36).substring(2, 10);
 };
 
+// GET /api/bookings
+// Fetch all bookings from Firestore
+router.get("/bookings", async (req, res) => {
+  try {
+    console.log("Fetching all bookings...");
+
+    // Reference to "bookings" collection
+    const snapshot = await db.collection("bookings").get();
+
+    // Check if collection is empty
+    if (snapshot.empty) {
+      console.warn("No bookings found in Firestore");
+      return res.status(200).json({
+        success: true,
+        message: "No bookings available",
+        data: [],
+      });
+    }
+
+    // Convert documents into array
+    const bookings = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    console.log(`Successfully fetched ${bookings.length} bookings`);
+
+    // Send success response
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    console.error("Error fetching bookings:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
+
+    // Send error response with detailed info in development
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch bookings",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
 // POST /api/bookings
 // Create a new booking
 router.post("/bookings", async (req, res) => {
@@ -76,10 +125,11 @@ router.post("/bookings", async (req, res) => {
 
     console.log("Booking created successfully:", { id: docRef.id, ...newBooking });
 
-    // Return success response with booking ID
+    // Return success response with booking ID and QR code
     res.status(201).json({
       success: true,
       id: docRef.id,
+      qrCode: qrCode,
       data: newBooking,
     });
   } catch (error) {
