@@ -4,7 +4,8 @@
   "description": "Backend server for ParkEase parking booking system",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed": "node ../firestore-seed.js"
   },
   "keywords": ["parking", "express", "firebase"],
   "author": "",

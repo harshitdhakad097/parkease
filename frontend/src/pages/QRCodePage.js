@@ -5,7 +5,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 // Import QRCode component from qrcode.react
-import QRCode from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 
 // QRCodePage component
 function QRCodePage() {
@@ -27,7 +27,7 @@ function QRCodePage() {
 
       {/* QR Code display */}
       <div style={styles.qrContainer}>
-        <QRCode value={qrCode} size={200} />
+        <QRCodeCanvas value={qrCode} size={200} />
       </div>
 
       {/* Instructions */}

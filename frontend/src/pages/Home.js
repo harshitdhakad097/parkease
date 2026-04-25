@@ -8,7 +8,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 
 // Import ParkingCard component
-import ParkingCard from "../components/ParkingCard";
+import ParkingCard from "../components/Parkingcards";
 
 // Home component
 function Home() {
