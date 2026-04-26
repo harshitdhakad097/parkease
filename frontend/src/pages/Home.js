@@ -1,292 +1,201 @@
-// Import React and hooks
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import ParkingCard from "../components/ParkingCard";
 
-// Import Firestore functions
-import { collection, getDocs } from "firebase/firestore";
+const API_URL = process.env.REACT_APP_API_URL || "";
+const PUNE_CENTER = { lat: 18.5204, lng: 73.8567 };
+const CATEGORIES = ["All", "Mall", "Hospital", "Office", "Stadium"];
 
-// Import database instance
-import { db } from "../firebase";
+const getLocationCategory = (location) => {
+  const value = `${location.category || location.type || location.name || location.landmark || ""}`.toLowerCase();
+  if (value.includes("mall") || value.includes("market")) return "Mall";
+  if (value.includes("hospital") || value.includes("clinic")) return "Hospital";
+  if (value.includes("office") || value.includes("business") || value.includes("corporate")) return "Office";
+  if (value.includes("stadium") || value.includes("ground") || value.includes("arena")) return "Stadium";
+  return "All";
+};
 
-// Import ParkingCard component
-import ParkingCard from "../components/Parkingcards";
-
-// Home component
 function Home() {
-  // State to store parking locations
   const [locations, setLocations] = useState([]);
-
-  // State for loading
   const [loading, setLoading] = useState(true);
-
-  // State for error
   const [error, setError] = useState(null);
-
-  // State for search filter
   const [searchQuery, setSearchQuery] = useState("");
+  const [category, setCategory] = useState("All");
+  const [userLocation, setUserLocation] = useState(null);
+  const [searchCenter, setSearchCenter] = useState(PUNE_CENTER);
+  const [statusMessage, setStatusMessage] = useState("Showing premium spots near you.");
 
-  // Fetch data on component mount
+  useEffect(() => {
+    document.title = "ParkEase - Home";
+  }, []);
+
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        // Fetch from backend API instead of direct Firestore
-        const response = await fetch("http://localhost:5000/api/parking");
-        
+        setLoading(true);
+        setError(null);
+
+        const activeCenter = userLocation || searchCenter || PUNE_CENTER;
+        const response = await fetch(`${API_URL}/api/parking?lat=${activeCenter.lat}&lng=${activeCenter.lng}`);
+        const result = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          throw new Error("Failed to fetch parking locations from server");
+          throw new Error(result.message || "Unable to load parking locations.");
         }
 
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-          setLocations(result.data);
-        } else {
-          throw new Error(result.message || "No data received");
-        }
+        setLocations(Array.isArray(result.data) ? result.data : []);
       } catch (err) {
-        // Fallback to Firestore if API fails
-        console.warn("API fetch failed, trying Firestore directly:", err);
-        try {
-          const querySnapshot = await getDocs(collection(db, "parkingLocations"));
-          const data = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setLocations(data);
-        } catch (firebaseErr) {
-          console.error("Both API and Firestore failed:", firebaseErr);
-          setError("Failed to load parking locations");
-        }
+        console.error("Home fetch error:", err);
+        setError(err.message || "Parking locations could not be loaded.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchLocations();
-  }, []);
+  }, [userLocation, searchCenter]);
 
-  // Filter locations based on search query
-  const filteredLocations = locations.filter((loc) =>
-    loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loc.address.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredLocations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return locations
+      .filter((location) => {
+        const categoryName = getLocationCategory(location);
+        if (category !== "All" && categoryName !== category) return false;
+        return [location.name, location.landmark, location.address]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+      })
+      .slice(0, 24);
+  }, [locations, category, searchQuery]);
 
-  // Show loading message
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p style={styles.loadingText}>Finding parking spots for you...</p>
-        </div>
-      </div>
+  const handleUseGps = () => {
+    if (!navigator.geolocation) {
+      setStatusMessage("GPS is not available in this browser.");
+      return;
+    }
+
+    setStatusMessage("Requesting your location...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: Number(position.coords.latitude.toFixed(6)),
+          lng: Number(position.coords.longitude.toFixed(6)),
+        });
+        setSearchCenter(null);
+        setStatusMessage("Showing parking near your live location.");
+      },
+      () => {
+        setStatusMessage("Location permission denied. Showing popular Pune parking.");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
     );
-  }
-
-  // Show error message
-  if (error) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.errorContainer}>
-          <p style={styles.errorText}>⚠️ {error}</p>
-        </div>
-      </div>
-    );
-  }
+  };
 
   return (
-    <div style={styles.container}>
-      {/* Hero Section */}
-      <div style={styles.heroSection}>
-        <div style={styles.heroContent}>
-          <h1 style={styles.heroTitle}>Find Your Perfect Parking Spot</h1>
-          <p style={styles.heroSubtitle}>Book in seconds. Park with confidence.</p>
-          
-          {/* Search Bar */}
-          <div style={styles.searchContainer}>
-            <span style={styles.searchIcon}>🔍</span>
-            <input
-              type="text"
-              placeholder="Search by location or address..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={styles.searchInput}
-            />
+    <main className="page">
+      <section className="hero">
+        <div className="hero-content">
+          <div>
+            <span className="hero-kicker">Premium parking</span>
+            <h1 className="hero-title">Reserve parking in seconds</h1>
+            <p className="hero-text">
+              Discover curated parking spots across Pune with live availability, fast booking, and a polished app experience.
+            </p>
           </div>
 
-          {/* Results Info */}
-          {filteredLocations.length > 0 && (
-            <p style={styles.resultsInfo}>
-              Showing {filteredLocations.length} parking spot{filteredLocations.length !== 1 ? "s" : ""}
-            </p>
-          )}
+          <div className="hero-actions">
+            <div className="search-bar">
+              <input
+                type="search"
+                placeholder="Search by area, landmark or address..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+
+            <div className="category-tabs">
+              {CATEGORIES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`category-tab ${category === item ? "active" : ""}`}
+                  onClick={() => setCategory(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            <div className="stats-row">
+              <div className="stats-item">🅿️ 500+ Parking Spots</div>
+              <div className="stats-item">⚡ 30 sec Booking</div>
+              <div className="stats-item">🏙️ 10+ Cities</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">Available locations</h2>
+          <p className="section-subtitle">{statusMessage}</p>
+        </div>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button className="btn btn-secondary" onClick={handleUseGps}>
+            Use my location
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={() => {
+              setSearchCenter(PUNE_CENTER);
+              setUserLocation(null);
+              setSearchQuery("");
+              setCategory("All");
+              setStatusMessage("Showing popular Pune parking.");
+            }}
+          >
+            Reset area
+          </button>
         </div>
       </div>
 
-      {/* Parking Cards Section */}
-      <div style={styles.cardsSection}>
-        {filteredLocations.length > 0 ? (
-          <div style={styles.cardContainer}>
-            {filteredLocations.map((loc) => (
-              <ParkingCard
-                key={loc.id}
-                locationId={loc.id}
-                name={loc.name}
-                address={loc.address}
-                totalSlots={loc.totalSlots}
-                pricePerHour={loc.pricePerHour}
-              />
-            ))}
+      {error && <p className="status error">{error}</p>}
+
+      {loading ? (
+        <div className="skeleton-grid">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="skeleton-card" />
+          ))}
+        </div>
+      ) : filteredLocations.length > 0 ? (
+        <div className="locations-grid">
+          {filteredLocations.map((location) => (
+            <ParkingCard
+              key={location.id}
+              locationId={location.id}
+              name={location.name}
+              address={location.address}
+              totalSlots={location.totalSlots}
+              availableSlots={location.availableSlots}
+              pricePerHour={location.pricePerHour}
+              distanceKm={location.distanceKm}
+              type={location.type}
+              landmark={location.landmark}
+            />
+          ))}
+        </div>
+      ) : (
+        <section className="panel empty-state">
+          <div>
+            <span className="empty-state-icon">🔍</span>
+            <h2>No spots match your search</h2>
+            <p className="section-subtitle">Try another keyword or reset the area to browse more parking.</p>
           </div>
-        ) : (
-          <div style={styles.noResultsContainer}>
-            <p style={styles.noResultsText}>😕 No parking spots found</p>
-            <p style={styles.noResultsSubtext}>Try adjusting your search criteria</p>
-          </div>
-        )}
-      </div>
-    </div>
+        </section>
+      )}
+    </main>
   );
 }
 
-// Premium inline styles
-const styles = {
-  container: {
-    backgroundColor: "#0A0F1E",
-    minHeight: "100vh",
-    color: "#fff",
-  },
-  heroSection: {
-    background: "linear-gradient(135deg, #0A0F1E 0%, #1A1F35 100%)",
-    borderBottom: "2px solid rgba(30, 144, 255, 0.2)",
-    padding: "80px 40px",
-    textAlign: "center",
-    position: "relative",
-    overflow: "hidden",
-  },
-  heroContent: {
-    maxWidth: "800px",
-    margin: "0 auto",
-    position: "relative",
-    zIndex: 2,
-  },
-  heroTitle: {
-    fontSize: "48px",
-    fontWeight: "900",
-    marginBottom: "16px",
-    letterSpacing: "-1px",
-    background: "linear-gradient(135deg, #fff 0%, #1E90FF 100%)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    backgroundClip: "text",
-  },
-  heroSubtitle: {
-    fontSize: "20px",
-    color: "#B0B8C8",
-    marginBottom: "40px",
-    fontWeight: "500",
-    letterSpacing: "0.3px",
-  },
-  searchContainer: {
-    display: "flex",
-    alignItems: "center",
-    backgroundColor: "#1F2540",
-    border: "2px solid rgba(30, 144, 255, 0.3)",
-    borderRadius: "12px",
-    padding: "0 20px",
-    marginBottom: "24px",
-    transition: "all 0.3s ease",
-    boxShadow: "0 4px 20px rgba(30, 144, 255, 0.1)",
-  },
-  searchIcon: {
-    fontSize: "20px",
-    marginRight: "12px",
-  },
-  searchInput: {
-    flex: 1,
-    backgroundColor: "transparent",
-    border: "none",
-    color: "#fff",
-    fontSize: "16px",
-    padding: "16px 0",
-    outline: "none",
-    fontWeight: "500",
-  },
-  resultsInfo: {
-    fontSize: "14px",
-    color: "#1E90FF",
-    fontWeight: "600",
-    letterSpacing: "0.3px",
-  },
-  cardsSection: {
-    padding: "60px 40px",
-  },
-  cardContainer: {
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: "24px",
-  },
-  noResultsContainer: {
-    textAlign: "center",
-    padding: "80px 40px",
-  },
-  noResultsText: {
-    fontSize: "32px",
-    fontWeight: "700",
-    marginBottom: "12px",
-    color: "#fff",
-  },
-  noResultsSubtext: {
-    fontSize: "16px",
-    color: "#B0B8C8",
-    fontWeight: "500",
-  },
-  loadingContainer: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "60vh",
-    gap: "20px",
-  },
-  spinner: {
-    width: "50px",
-    height: "50px",
-    border: "4px solid rgba(30, 144, 255, 0.2)",
-    borderTop: "4px solid #1E90FF",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-  },
-  loadingText: {
-    fontSize: "18px",
-    color: "#B0B8C8",
-    fontWeight: "600",
-  },
-  errorContainer: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "60vh",
-  },
-  errorText: {
-    fontSize: "20px",
-    color: "#FF6B6B",
-    fontWeight: "700",
-    backgroundColor: "rgba(255, 107, 107, 0.1)",
-    padding: "20px 30px",
-    borderRadius: "12px",
-    border: "2px solid rgba(255, 107, 107, 0.3)",
-  },
-};
-
-// CSS animation for spinner
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(styleSheet);
-
-// Export Home component
 export default Home;

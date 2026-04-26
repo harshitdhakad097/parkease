@@ -66,14 +66,41 @@ router.get("/bookings", async (req, res) => {
 router.post("/bookings", async (req, res) => {
   try {
     // Extract data from request body
-    const { locationId, slotNumber, locationName, pricePerHour } = req.body;
+    const {
+      locationId,
+      slotNumber,
+      locationName,
+      pricePerHour,
+      bookingDate,
+      startTime,
+      durationHours,
+      startsAt,
+      endsAt,
+    } = req.body;
 
     // Basic validation - check all required fields exist
-    if (!locationId || !slotNumber || !locationName || !pricePerHour) {
-      console.warn("Missing required fields in booking request:", { locationId, slotNumber, locationName, pricePerHour });
+    if (
+      !locationId ||
+      !slotNumber ||
+      !locationName ||
+      pricePerHour == null ||
+      !bookingDate ||
+      !startTime ||
+      durationHours == null
+    ) {
+      console.warn("Missing required fields in booking request:", {
+        locationId,
+        slotNumber,
+        locationName,
+        pricePerHour,
+        bookingDate,
+        startTime,
+        durationHours,
+      });
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: locationId, slotNumber, locationName, pricePerHour",
+        message:
+          "Missing required fields: locationId, slotNumber, locationName, pricePerHour, bookingDate, startTime, durationHours",
       });
     }
 
@@ -99,10 +126,24 @@ router.post("/bookings", async (req, res) => {
       });
     }
 
-    if (typeof pricePerHour !== "number" || pricePerHour <= 0) {
+    if (typeof pricePerHour !== "number" || pricePerHour < 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid pricePerHour: must be a positive number",
+        message: "Invalid pricePerHour: must be zero or a positive number",
+      });
+    }
+
+    if (typeof bookingDate !== "string" || typeof startTime !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking date or start time",
+      });
+    }
+
+    if (typeof durationHours !== "number" || durationHours < 1 || durationHours > 12) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid durationHours: must be between 1 and 12",
       });
     }
 
@@ -115,6 +156,11 @@ router.post("/bookings", async (req, res) => {
       slotNumber: slotNumber.trim(),
       locationName: locationName.trim(),
       pricePerHour: pricePerHour,
+      bookingDate,
+      startTime,
+      durationHours,
+      startsAt,
+      endsAt,
       status: "confirmed",
       qrCode,
       createdAt: new Date(), // Timestamp
@@ -144,6 +190,51 @@ router.post("/bookings", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create booking",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
+// DELETE /api/bookings/:id
+// Cancel a booking by document ID
+router.delete("/bookings/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Booking id is required to cancel a booking.",
+    });
+  }
+
+  try {
+    const bookingRef = db.collection("bookings").doc(id);
+    const bookingDoc = await bookingRef.get();
+
+    if (!bookingDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found.",
+      });
+    }
+
+    await bookingRef.update({ status: "cancelled", cancelledAt: new Date() });
+
+    res.status(200).json({
+      success: true,
+      message: "Booking cancelled successfully.",
+      id,
+    });
+  } catch (error) {
+    console.error("Error cancelling booking:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      bookingId: id,
+    });
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel booking",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

@@ -1,123 +1,172 @@
-// Import React and hooks
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-// Import Firestore functions (kept as fallback)
-import { collection, getDocs } from "firebase/firestore";
+const API_URL = process.env.REACT_APP_API_URL || "";
+const TABS = [
+  { id: "upcoming", label: "Upcoming" },
+  { id: "past", label: "Past" },
+  { id: "cancelled", label: "Cancelled" },
+];
 
-// Import database instance
-import { db } from "../firebase";
-
-// MyBookings component
 function MyBookings() {
-  // State to store bookings
   const [bookings, setBookings] = useState([]);
-
-  // State for loading
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("upcoming");
+  const [cancellingId, setCancellingId] = useState(null);
 
-  // Fetch bookings on component mount
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        // Fetch from backend API
-        const response = await fetch("http://localhost:5000/api/bookings");
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch bookings from server");
-        }
-
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-          setBookings(result.data);
-        } else {
-          throw new Error(result.message || "No data received");
-        }
-      } catch (error) {
-        // Fallback to Firestore if API fails
-        console.warn("API fetch failed, trying Firestore directly:", error);
-        try {
-          const querySnapshot = await getDocs(collection(db, "bookings"));
-          const data = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setBookings(data);
-        } catch (firebaseErr) {
-          console.error("Both API and Firestore failed:", firebaseErr);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    document.title = "ParkEase - My Bookings";
     fetchBookings();
   }, []);
 
-  // Show loading message
-  if (loading) {
-    return <p style={styles.message}>Loading bookings...</p>;
-  }
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${API_URL}/api/bookings`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "Unable to load bookings.");
+      setBookings(Array.isArray(result.data) ? result.data : []);
+    } catch (err) {
+      console.error("MyBookings fetch error:", err);
+      setError(err.message || "Unable to load your bookings.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // If no bookings found
-  if (bookings.length === 0) {
-    return <p style={styles.message}>No bookings yet</p>;
-  }
+  const cancelBooking = async (id) => {
+    setCancellingId(id);
+    try {
+      const response = await fetch(`${API_URL}/api/bookings/${id}`, {
+        method: "DELETE",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "Unable to cancel booking.");
+      setBookings((prev) => prev.map((booking) => (booking.id === id ? { ...booking, status: "cancelled" } : booking)));
+    } catch (err) {
+      console.error("Cancel booking error:", err);
+      setError(err.message || "Could not cancel booking.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const bookingsByTab = useMemo(() => {
+    const now = new Date();
+    return bookings.filter((booking) => {
+      if (activeTab === "cancelled") return booking.status === "cancelled";
+      if (activeTab === "upcoming") {
+        return booking.status !== "cancelled" && new Date(`${booking.bookingDate}`) >= now;
+      }
+      return booking.status !== "cancelled" && new Date(`${booking.bookingDate}`) < now;
+    });
+  }, [activeTab, bookings]);
+
+  const formatBookingDate = (dateValue) => {
+    try {
+      return new Date(dateValue).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    } catch {
+      return dateValue;
+    }
+  };
 
   return (
-    <div style={styles.container}>
-      <h2>My Bookings</h2>
+    <main className="page">
+      <section className="section-header">
+        <div>
+          <span className="hero-kicker">Reservations</span>
+          <h2>My bookings</h2>
+          <p className="section-subtitle">View, refresh, and manage your parking reservations.</p>
+        </div>
+        <button className="btn btn-secondary" type="button" onClick={fetchBookings}>
+          Refresh
+        </button>
+      </section>
 
-      {/* Display each booking */}
-      <div style={styles.cardContainer}>
-        {bookings.map((booking) => (
-          <div key={booking.id} style={styles.card}>
-            
-            {/* Location Name */}
-            <h3>{booking.locationName}</h3>
-
-            {/* Slot Number */}
-            <p><strong>Slot:</strong> {booking.slotNumber}</p>
-
-            {/* Status */}
-            <p><strong>Status:</strong> {booking.status}</p>
-
-            {/* Created At */}
-            <p>
-              <strong>Booked At:</strong>{" "}
-              {booking.createdAt?.seconds
-                ? new Date(booking.createdAt.seconds * 1000).toLocaleString()
-                : "N/A"}
-            </p>
-          </div>
+      <div className="booking-tabs">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`booking-tab ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
         ))}
       </div>
-    </div>
+
+      {error && <p className="status error">{error}</p>}
+
+      {loading ? (
+        <div className="skeleton-grid">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="skeleton-card" />
+          ))}
+        </div>
+      ) : bookingsByTab.length > 0 ? (
+        <div className="bookings-grid">
+          {bookingsByTab.map((booking) => {
+            const isCancelled = booking.status === "cancelled";
+            const isPast = !isCancelled && new Date(booking.bookingDate) < new Date();
+            const statusLabel = isCancelled ? "Cancelled" : isPast ? "Past" : "Upcoming";
+            return (
+              <article key={booking.id} className="booking-card">
+                <div className="booking-card-header">
+                  <div>
+                    <h3>{booking.locationName}</h3>
+                    <p className="booking-subtitle">{booking.address}</p>
+                  </div>
+                  <span className={`booking-chip ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
+                </div>
+
+                <div className="booking-grid">
+                  <div>
+                    <span>Slot</span>
+                    <strong>{booking.slotNumber}</strong>
+                  </div>
+                  <div>
+                    <span>Date</span>
+                    <strong>{formatBookingDate(booking.bookingDate)}</strong>
+                  </div>
+                  <div>
+                    <span>Duration</span>
+                    <strong>{booking.durationHours || booking.duration || 1} hr</strong>
+                  </div>
+                  <div>
+                    <span>Amount</span>
+                    <strong>₹{booking.pricePerHour || booking.total}</strong>
+                  </div>
+                </div>
+
+                <div className="booking-actions">
+                  {!isCancelled && !isPast && (
+                    <button
+                      className="btn btn-outline"
+                      type="button"
+                      onClick={() => cancelBooking(booking.id)}
+                      disabled={cancellingId === booking.id}
+                    >
+                      {cancellingId === booking.id ? "Cancelling..." : "Cancel booking"}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <section className="panel empty-state">
+          <div>
+            <span className="empty-state-icon">🗂️</span>
+            <h2>No bookings found</h2>
+            <p className="section-subtitle">Switch tabs or create a new booking from the home page.</p>
+          </div>
+        </section>
+      )}
+    </main>
   );
 }
 
-// Inline styles
-const styles = {
-  container: {
-    padding: "20px",
-  },
-  cardContainer: {
-    display: "flex",
-    flexWrap: "wrap",
-  },
-  card: {
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    padding: "15px",
-    margin: "10px",
-    width: "250px",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-  },
-  message: {
-    padding: "20px",
-    fontSize: "18px",
-  },
-};
-
-// Export component
 export default MyBookings;

@@ -1,47 +1,95 @@
-// Import React
-import React from "react";
+import React, { useEffect, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  NavLink,
+  useLocation,
+} from "react-router-dom";
+import "./App.css";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import SlotSelection from "./pages/SlotSelection";
+import BookingConfirm from "./pages/BookingConfirm";
+import QRCodePage from "./pages/QRCodePage";
+import MyBookings from "./pages/MyBookings";
 
-// Import React Router components
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; // Used for routing
+function AnimatedRoutes() {
+  const location = useLocation();
 
-// Import Navbar component (shown on all pages)
-import Navbar from "./components/navbar";
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.pathname]);
 
-// Import all pages from pages folder
-import Home from "./pages/Home"; // Home page ("/")
-import SlotSelection from "./pages/SlotSelection"; // Slot selection page ("/slots/:locationId")
-import BookingConfirm from "./pages/BookingConfirm"; // Booking confirmation page ("/confirm")
-import QRCodePage from "./pages/QRCodePage"; // QR code display page ("/qrcode")
-import MyBookings from "./pages/MyBookings"; // User bookings page ("/my-bookings")
-
-// Main App component
-function App() {
   return (
-    // Wrap entire app with Router
-    <Router>
-      {/* Navbar will be visible on all pages */}
-      <Navbar />
-
-      {/* Define all routes */}
-      <Routes>
-        {/* Home page route */}
+    <div className="page-transition">
+      <Routes location={location}>
         <Route path="/" element={<Home />} />
-
-        {/* Slot selection page with dynamic locationId */}
         <Route path="/slots/:locationId" element={<SlotSelection />} />
-
-        {/* Booking confirmation page */}
         <Route path="/confirm" element={<BookingConfirm />} />
-
-        {/* QR code page */}
+        <Route path="/payment" element={<BookingConfirm />} />
         <Route path="/qrcode" element={<QRCodePage />} />
-
-        {/* My bookings page */}
         <Route path="/my-bookings" element={<MyBookings />} />
       </Routes>
+    </div>
+  );
+}
+
+function App() {
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    const handleToast = (event) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const toast = {
+        id,
+        message: event.detail.message,
+        type: event.detail.type || "default",
+      };
+      setToasts((prev) => [...prev, toast]);
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((item) => item.id !== id));
+      }, 4200);
+    };
+
+    window.addEventListener("parkease-toast", handleToast);
+    return () => window.removeEventListener("parkease-toast", handleToast);
+  }, []);
+
+  return (
+    <Router>
+      <div className="app-shell">
+        <Navbar />
+        <AnimatedRoutes />
+
+        <nav className="mobile-bottom-nav">
+          <NavLink to="/" className={({ isActive }) => (isActive ? "bottom-link active" : "bottom-link")}>
+            🏠 Home
+          </NavLink>
+          <NavLink
+            to="/payment"
+            className={({ isActive }) => (isActive ? "bottom-link active" : "bottom-link")}
+          >
+            🅿️ Book
+          </NavLink>
+          <NavLink
+            to="/my-bookings"
+            className={({ isActive }) => (isActive ? "bottom-link active" : "bottom-link")}
+          >
+            📋 Bookings
+          </NavLink>
+        </nav>
+
+        <div className="toast-container">
+          {toasts.map((toast) => (
+            <div key={toast.id} className={`toast ${toast.type}`}>
+              {toast.message}
+            </div>
+          ))}
+        </div>
+      </div>
     </Router>
   );
 }
 
-// Export App component
 export default App;
