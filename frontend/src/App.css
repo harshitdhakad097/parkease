@@ -158,7 +158,7 @@ a {
   max-width: 620px;
   font-size: 1.05rem;
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.96);
 }
 
 .hero-actions {
@@ -397,7 +397,7 @@ a {
 
 .btn-secondary {
   background: #fff;
-  color: var(--primary);
+  color: var(--text);
   border: 1px solid rgba(108, 99, 255, 0.18);
 }
 
@@ -766,11 +766,17 @@ a {
   border-radius: 18px;
   background: var(--surface-soft);
   text-align: center;
+  color: var(--text);
 }
 
 .step-item.active {
-  background: linear-gradient(135deg, rgba(108, 99, 255, 0.16), rgba(255, 255, 255, 0.78));
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.16), rgba(255, 255, 255, 0.9));
   border: 1px solid rgba(108, 99, 255, 0.28);
+  color: var(--text);
+}
+
+.step-item.active .step-label {
+  color: rgba(17, 24, 39, 0.72);
 }
 
 .step-index {
@@ -809,23 +815,27 @@ a {
   gap: 10px;
   padding: 18px;
   border-radius: 20px;
-  background: var(--surface-soft);
-  border: 1px solid transparent;
+  background: var(--surface);
+  border: 1px solid rgba(108, 99, 255, 0.12);
   cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  color: var(--text);
 }
 
 .payment-method-card:hover {
   transform: translateY(-1px);
+  background: #f8f8ff;
 }
 
 .payment-method-card.active {
   border-color: var(--primary);
   box-shadow: 0 20px 40px rgba(108, 99, 255, 0.14);
+  background: #eef0ff;
 }
 
 .payment-method-card h4 {
   margin: 0;
+  color: var(--text);
 }
 
 .card-preview {
